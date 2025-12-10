@@ -166,7 +166,7 @@ class ProtonVPN:
         try:
             self.driver.find_element(By.CSS_SELECTOR, ".p-1").click()
             time.sleep(1)
-            self.driver.find_element(By.CSS_SELECTOR, ".mb-4 > .button").click()
+            self.driver.find_element(By.CSSATOR, ".mb-4 > .button").click()
             time.sleep(2)
             print("Logout Successful.")
             return True
