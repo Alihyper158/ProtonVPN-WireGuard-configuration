@@ -1,47 +1,46 @@
-name: ProtonVPN Config Downloader
+name: ProtonVPN WireGuard Auto-Update
 
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 0 * * *'
+    - cron: '0 */4 * * *'
+
+permissions:
+  contents: write
 
 jobs:
-  download_and_send:
+  update-vpn-configs:
     runs-on: ubuntu-latest
-    
-    env:
-      VPN_USERNAME: ${{ secrets.VPN_USERNAME }}
-      VPN_PASSWORD: ${{ secrets.VPN_PASSWORD }}
-      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-      PYTHONUNBUFFERED: 1
 
     steps:
-    - name: ⬇️ Checkout Repository
-      uses: actions/checkout@v4
-
-    - name: 🐍 Setup Python 3.10
-      uses: actions/setup-python@v5
+    - uses: actions/checkout@v4
+    
+    - uses: actions/setup-python@v4
       with:
-        python-version: '3.10'
-        # --- خط کش کردن که باعث خطا می شد حذف شد ---
-        # cache: 'pip' 
-        # ----------------------------------------------
+        python-version: '3.9'
 
-    - name: 📦 Install Python Dependencies & Chrome Driver
+    - name: Install Dependencies
+      run: pip install selenium requests
+
+    - name: Run Downloader Script
+      env:
+        VPN_USERNAME: ${{ secrets.VPN_USERNAME }}
+        VPN_PASSWORD: ${{ secrets.VPN_PASSWORD }}
+        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      run: python proton_downloader_chrome.py
+
+    - name: Commit and Push Changes
       run: |
-        # نصب پکیج های پایتون
-        pip install selenium requests webdriver-manager
+        git config --global user.name "GitHub Action Bot"
+        git config --global user.email "action@github.com"
         
-        # نصب مرورگر کروم و وابستگی های Headless
-        sudo apt-get update
-        sudo apt-get install -y google-chrome-stable
-
-    - name: ⚙️ Clear Previous Logs/Configs
-      run: |
-        rm -rf downloaded_configs
-        rm -f downloaded_server_ids.json
-        mkdir -p downloaded_configs
-
-    - name: 🚀 Run ProtonVPN Downloader Script
-      run: python3 proton_downloader_chrome.py
+        if [ -f "ProtonVPN_WireGuard_Configs.zip" ]; then
+          git add ProtonVPN_WireGuard_Configs.zip downloaded_wg_ids.json
+          
+          git commit -m "🔄 Update WireGuard Configs [$(date)]" || echo "No changes to commit"
+          
+          git push
+        else
+          echo "No ZIP file found to upload."
+        fi
